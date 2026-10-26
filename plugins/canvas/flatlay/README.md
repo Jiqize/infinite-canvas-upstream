@@ -56,13 +56,16 @@ bun test ./src/services/api/tencent-cutout.test.ts
 
 ## Windows 构建与分发
 
-从 `https://github.com/Jiqize/infinite-canvas-upstream.git` 的 `main` 拉取。先执行上面的依赖安装与平铺插件构建，再执行：
+从 `https://github.com/Jiqize/infinite-canvas-upstream.git` 的 `main` 拉取，在仓库根目录执行以下完整命令。它会构建全部 16 个插件，包含平铺、姿势参考、换角度、宫格、列表批量、分镜等；仅执行前面的平铺单插件命令不会带上其他节点。
 
 ```sh
+npm --prefix web install --legacy-peer-deps --ignore-scripts
+npm --prefix plugins/canvas/registry install
+npm --prefix plugins/canvas/registry run build:local
 npm --prefix web run build
 npm --prefix web run start
 ```
 
-`web/dist` 是静态网页产物，不是 Windows 安装包；分发时需完整保留 `plugins/flatlay.js` 和 `plugins/index.json`，通过 HTTP 服务打开，不能直接双击 HTML。默认预览地址为 `http://localhost:3000`，在「节点管理」启用本地批量平铺插件。这里提供构建步骤，尚未在 Windows 实机验证。
+`web/dist` 是静态网页产物，不是 Windows 安装包；分发时需完整保留 整个 `plugins/` 目录（所有插件 JS 与 `index.json`），通过 HTTP 服务打开，不能直接双击 HTML。默认预览地址为 `http://localhost:3000`，在「节点管理」启用需要的本地插件。这里提供构建步骤，尚未在 Windows 实机验证。
 
 画布、图片和模型配置保存在原浏览器本地，不随 Git 同步；需要迁移时使用应用已有的导出/导入。腾讯凭据不会打进产物，须在使用端配置；目前获批的桶 CORS 来源为 `http://localhost:3000`，更换域名或端口需配置相应来源。

@@ -7,6 +7,8 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Windows 完整节点包：执行注册表 build:local 后再构建网页，检查 dist/plugins 包含 16 个插件 JS 与 index.json，节点管理可启用姿势参考、换角度、宫格、分镜等。仅完成入口与清单路径检查，未执行构建，待 Windows 实测。
+
 - 平铺合并前修复：停止恰逢白底或透明底保存完成时先保存任务检查点，重试复用产物；2 个新增回归用例通过。文件夹节点重开恢复多图资源 URL，浏览器用过期 Blob URL 验证两张图片恢复后均可读且 storageKey 不变。平铺/拖放 17 项与腾讯 7 项测试通过；未执行全量构建或类型检查。
 
 - 文件夹节点拖入追加：支持多文件、递归目录和目录分批读取，保留已有内容；拖入高亮，节点处理后不向外层画布传播。3 项目录读取测试通过；浏览器用合成文件拖放事件验证列表从 2 增至 3、画布节点数保持 4，随后移除测试新增项。Finder 原生目录拖放仍待用户验证；未触发生图。

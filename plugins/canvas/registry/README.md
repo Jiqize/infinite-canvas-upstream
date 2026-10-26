@@ -37,3 +37,17 @@ https://cdn.jsdelivr.net/gh/basketikun/infinite-canvas@plugins-dist/official-plu
 cd plugins/canvas/registry && npm install && npm run build   # 产出 dist/
 # 用任意静态服务器伺服 dist/,把 VITE_PLUGIN_REGISTRY_URL 指向其 official-plugins.json
 ```
+
+## Windows / 本地整包分发
+
+在仓库根目录执行（Node.js 22）：
+
+```sh
+npm --prefix web install --legacy-peer-deps --ignore-scripts
+npm --prefix plugins/canvas/registry install
+npm --prefix plugins/canvas/registry run build:local
+npm --prefix web run build
+npm --prefix web run start
+```
+
+`build:local` 将注册表里的全部 16 个插件同步到 `web/public/plugins/` 并更新 `index.json`，保留已有额外插件清单。随后网页构建会把它们收入 `web/dist/plugins/`。分发完整 `web/dist`，通过 HTTP 服务打开，在节点管理中逐个启用需要的插件；不依赖远端官方插件列表。尚未在 Windows 实机验收。

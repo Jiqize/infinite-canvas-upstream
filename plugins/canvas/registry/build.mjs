@@ -3,7 +3,7 @@
 // CI(publish-plugins.yml)把 dist/ 强推到 plugins-dist 分支,前端经 jsDelivr 远程拉取。
 // 本地自测:`npm install && npm run build`,再把 VITE_PLUGIN_REGISTRY_URL 指向本地 dist。
 import { build } from "esbuild";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -78,3 +78,25 @@ const manifest = {
 };
 await writeFile(join(outDir, "official-plugins.json"), JSON.stringify(manifest, null, 4) + "\n");
 console.log(`wrote official-plugins.json (${OFFICIAL.length} plugins) → dist/`);
+
+// 本地分发时同步全部插件，沿用宿主的本地清单发现机制。
+if (process.argv.includes("--local")) {
+    const publicDir = join(root, "..", "..", "..", "web", "public", "plugins");
+    await mkdir(publicDir, { recursive: true });
+    const indexPath = join(publicDir, "index.json");
+    let previous = [];
+    try {
+        previous = JSON.parse(await readFile(indexPath, "utf8"));
+    } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+    }
+    if (!Array.isArray(previous) || previous.some((entry) => typeof entry !== "string")) {
+        throw new Error("本地插件清单格式无效，请检查 web/public/plugins/index.json");
+    }
+    for (const plugin of OFFICIAL) {
+        await cp(join(outDir, `${plugin.id}.js`), join(publicDir, `${plugin.id}.js`));
+    }
+    const entries = [...new Set([...previous, ...OFFICIAL.map((plugin) => `/plugins/${plugin.id}.js`)])];
+    await writeFile(indexPath, JSON.stringify(entries, null, 2) + "\n");
+    console.log(`synced ${OFFICIAL.length} plugins → web/public/plugins`);
+}

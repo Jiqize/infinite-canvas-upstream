@@ -163,3 +163,17 @@ ctx.applyOps([
 
 - 插件代码会在画布页面内**直接执行**,可访问浏览器本地数据(含 AI API Key)。发布前请自审,用户也只应安装可信来源。
 - 交互控件记得 `onMouseDown={(e) => e.stopPropagation()}`(避免触发节点拖拽),滚动区域加 `onWheel={(e) => e.stopPropagation()}` 与容器 `data-canvas-no-zoom`(避免被画布缩放拦截)。
+
+## Windows / 本地整包分发
+
+在仓库根目录执行（Node.js 22）：
+
+```sh
+npm --prefix web install --legacy-peer-deps --ignore-scripts
+npm --prefix plugins/canvas/registry install
+npm --prefix plugins/canvas/registry run build:local
+npm --prefix web run build
+npm --prefix web run start
+```
+
+`build:local` 将注册表里的全部 16 个插件同步到 `web/public/plugins/` 并更新 `index.json`，保留已有额外插件清单。随后网页构建会把它们收入 `web/dist/plugins/`。分发完整 `web/dist`，通过 HTTP 服务打开，在节点管理中逐个启用需要的插件；不依赖远端官方插件列表。尚未在 Windows 实机验收。
