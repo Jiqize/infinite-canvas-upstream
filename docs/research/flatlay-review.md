@@ -19,4 +19,6 @@
 
 本功能基于 feat/node-pack 的 cf2417c。本地 main 跟踪 basketikun 上游；上游最新 origin/main 为 9cd3dea，比本地 main 多两个文档提交。当前功能分支还带有此前 24 个主题/节点包等祖先提交，直接合并会一并纳入。
 
-Jiqize/Infinite-Canvas 的 fork/main 为另一套 Python/Feebee 项目，与当前新画布无共同历史，不能向其直接推送。合并目标与最终范围待用户明确；未修改远端 main。
+Jiqize/Infinite-Canvas 的 fork/main 为另一套 Python/Feebee 项目，与当前新画布无共同历史，不能向其直接推送。合并目标与最终范围待用户明确；未修改本地或远端 main。
+
+已在功能分支整合 origin/main 的两个文档提交，仅 CHANGELOG 发生冲突，保留本分支 Unreleased 条目与上游 v0.20.0 版本分界；README 和品牌资源保留上游更新，无代码冲突。
