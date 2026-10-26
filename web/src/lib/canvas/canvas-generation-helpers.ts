@@ -47,6 +47,11 @@ export async function hydrateCanvasImages(nodes: CanvasNodeData[]) {
         nodes.map(async (node) => {
             const metadata = node.metadata;
             const content = metadata?.content;
+            // 文件夹的多图资源也需要恢复会话地址，供普通图片节点引用。
+            if (node.type === "flatlay:folder" && Array.isArray(metadata?.folderImages)) {
+                const folderImages = await Promise.all(metadata.folderImages.map(async (image: { storageKey: string; url: string }) => ({ ...image, url: await resolveImageUrl(image.storageKey, image.url) })));
+                return { ...node, metadata: { ...metadata, folderImages, pluginKeepMounted: false } };
+            }
             if ((node.type === CanvasNodeType.Video || node.type === CanvasNodeType.Audio) && metadata?.storageKey) return { ...node, metadata: { ...metadata, content: await resolveMediaUrl(metadata.storageKey, content) } };
             if (node.type !== CanvasNodeType.Image || !metadata || !content) return node;
             const images = await Promise.all(

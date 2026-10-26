@@ -11,7 +11,7 @@ export type CanvasNodeResource = { kind: CanvasResourceKind; text?: string; url?
 
 // AI generation capabilities injected by the host, reusing its model and credential configuration.
 export type GenerateOptions = { signal?: AbortSignal; references?: string[]; model?: string };
-export type GenerateImageOptions = GenerateOptions & { count?: number; size?: string };
+export type GenerateImageOptions = GenerateOptions & { count?: number; size?: string; background?: "opaque" | "transparent" };
 export type GenerateImageResult = { images: string[] };
 export type GenerateVideoOptions = GenerateOptions & { size?: string; seconds?: string };
 export type GenerateVideoResult = { url: string; mimeType: string; width?: number; height?: number; durationMs?: number };
@@ -41,7 +41,19 @@ export type CanvasNodeToolbarItem = {
 };
 
 // Context injected while rendering each node; the primary interface between plugins and the canvas.
+// 图片处理能力由宿主提供，凭据不进入节点数据。
+export type PluginStoredImage = { url: string; storageKey: string; width: number; height: number; bytes: number; mimeType: string };
+export type CanvasPluginMedia = {
+    saveImage: (source: string, signal?: AbortSignal) => Promise<PluginStoredImage>;
+    resolveImage: (image: { storageKey?: string; url?: string }) => Promise<string>;
+    removeBackground: (source: string, mode: "goods" | "general", signal?: AbortSignal) => Promise<{ image: string; warning?: string }>;
+    configureCutout: () => void;
+    cutoutReady: () => boolean;
+    recordGeneration: (image: PluginStoredImage, details: { prompt: string; model: string; size?: string }) => Promise<void>;
+};
+
 export type CanvasNodeContext = {
+    media?: CanvasPluginMedia;
     node: CanvasNodeData;
     theme: CanvasTheme;
     scale: number;
@@ -80,6 +92,7 @@ export type PluginStorage = {
 
 // Node-independent host capabilities constructed by the canvas page and injected into the render chain.
 export type CanvasPluginHost = {
+    media?: CanvasPluginMedia;
     getNode: (id: string) => CanvasNodeData | null;
     getNodes: () => CanvasNodeData[];
     getConnections: () => CanvasConnection[];

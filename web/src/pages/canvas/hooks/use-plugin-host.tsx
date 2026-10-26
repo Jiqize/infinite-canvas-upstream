@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useMemo, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 
 import { requestEdit, requestGeneration, requestImageQuestion, type AiTextMessage } from "@/services/api/image";
-import { imageToDataUrl } from "@/services/image-storage";
+import { imageToDataUrl, uploadImage, resolveImageUrl } from "@/services/image-storage";
+import { removeTencentBackground } from "@/services/api/tencent-cutout";
+import { useTencentCutoutStore } from "@/stores/use-tencent-cutout-store";
+import { recordCanvasGeneration } from "@/services/generation-gallery";
 import { requestVideoGeneration, storeGeneratedVideo } from "@/services/api/video";
 import { decodeChannelModel, selectableModelsByCapability, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
 import { buildGenerationConfig } from "@/lib/canvas/canvas-generation-helpers";
@@ -18,6 +21,8 @@ import type { CanvasConnection, CanvasNodeData, ViewportTransform } from "@/type
 type CanvasTheme = (typeof canvasThemes)[keyof typeof canvasThemes];
 
 type PluginHostParams = {
+    projectId: string;
+    projectTitle?: string;
     effectiveConfig: AiConfig;
     isAiConfigReady: (config: AiConfig, model: string) => boolean;
     openConfigDialog: (open: boolean) => void;
@@ -36,6 +41,10 @@ type PluginHostParams = {
  */
 export function usePluginHost(params: PluginHostParams) {
     const { t } = useTranslation();
+    const projectRef = useRef(params.projectId);
+    projectRef.current = params.projectId;
+    const titleRef = useRef(params.projectTitle);
+    titleRef.current = params.projectTitle;
     const { effectiveConfig, isAiConfigReady, openConfigDialog, theme, nodesRef, connectionsRef, viewportRef, setNodes, setDialogNodeId, applyAgentOps } = params;
 
     // Host capabilities available to plugin nodes; methods receive nodeId and are not bound to a specific node.
@@ -53,7 +62,7 @@ export function usePluginHost(params: PluginHostParams) {
         };
         return {
             generateImage: async (prompt, options) => {
-                const config = { ...buildGenerationConfig(effectiveConfig, undefined, "image"), count: String(options?.count || 1), ...(options?.model ? { model: options.model } : {}), ...(options?.size ? { size: options.size } : {}) };
+                const config = { ...buildGenerationConfig(effectiveConfig, undefined, "image"), count: String(options?.count || 1), ...(options?.background ? { background: options.background } : {}), ...(options?.model ? { model: options.model } : {}), ...(options?.size ? { size: options.size } : {}) };
                 ensureReady(config);
                 const references = await toReferences(options?.references, options?.signal);
                 const items = references.length ? await requestEdit(config, prompt, references, { signal: options?.signal }) : await requestGeneration(config, prompt, { signal: options?.signal });
@@ -94,9 +103,31 @@ export function usePluginHost(params: PluginHostParams) {
         };
     }, [effectiveConfig, isAiConfigReady, openConfigDialog, t]);
 
+    const media = useMemo<NonNullable<CanvasPluginHost["media"]>>(() => ({
+        saveImage: async (source, signal) => {
+            const image = await uploadImage(source, { signal });
+            if (!image.storageKey) throw new Error("图片未能保存到本地，请检查图片地址的跨域权限。");
+            return { ...image, storageKey: image.storageKey };
+        },
+        resolveImage: async (image) => {
+            const url = await resolveImageUrl(image.storageKey, image.url || "");
+            if (!url) throw new Error("本地图片已不可用，请重新接入原图。");
+            return imageToDataUrl({ url });
+        },
+        removeBackground: async (source, mode, signal) => {
+            const result = await removeTencentBackground(await imageToDataUrl({ url: source }, { signal }), mode, signal);
+            const url = URL.createObjectURL(result.image);
+            try { return { image: await imageToDataUrl({ url }, { signal }), warning: result.warning }; }
+            finally { URL.revokeObjectURL(url); }
+        },
+        configureCutout: () => useTencentCutoutStore.getState().setOpen(true),
+        cutoutReady: () => Boolean(useTencentCutoutStore.getState().config),
+        recordGeneration: (image, details) => recordCanvasGeneration({ id: image.storageKey, kind: "image", createdAt: Date.now(), ...details, storageKey: image.storageKey, width: image.width, height: image.height, bytes: image.bytes, mimeType: image.mimeType, projectId: params.projectId, projectTitle: projectRef.current === params.projectId ? titleRef.current : undefined }),
+    }), [params.projectId]);
+
     const pluginHost = useMemo<CanvasPluginHost>(
         () => ({
-            getNode: (id) => nodesRef.current.find((node) => node.id === id) || null,
+            getNode: (id) => projectRef.current === params.projectId ? nodesRef.current.find((node) => node.id === id) || null : null,
             getNodes: () => nodesRef.current,
             getConnections: () => connectionsRef.current,
             getUpstream: (nodeId) =>
@@ -109,14 +140,24 @@ export function usePluginHost(params: PluginHostParams) {
                     .filter((conn) => conn.fromNodeId === nodeId)
                     .map((conn) => nodesRef.current.find((node) => node.id === conn.toNodeId))
                     .filter((node): node is CanvasNodeData => Boolean(node)),
-            updateNode: (nodeId, patch) => setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, ...patch } : node))),
-            updateMetadata: (nodeId, patch) => setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, ...patch } } : node))),
+            // 同步 ref 后再更新 React，确保紧接着的 applyOps 读取到刚保存的任务状态。
+            updateNode: (nodeId, patch) => {
+                if (projectRef.current !== params.projectId) return;
+                nodesRef.current = nodesRef.current.map((node) => node.id === nodeId ? { ...node, ...patch } : node);
+                setNodes(nodesRef.current);
+            },
+            updateMetadata: (nodeId, patch) => {
+                if (projectRef.current !== params.projectId) return;
+                nodesRef.current = nodesRef.current.map((node) => node.id === nodeId ? { ...node, metadata: { ...node.metadata, ...patch } } : node);
+                setNodes(nodesRef.current);
+            },
             applyOps: (ops) => applyAgentOps(ops),
             ai: pluginAi,
+            media,
             openPanel: (nodeId) => setDialogNodeId(nodeId),
             closePanel: () => setDialogNodeId(null),
         }),
-        [applyAgentOps, pluginAi],
+        [applyAgentOps, pluginAi, media, params.projectId],
     );
 
     const renderPluginPanel = useCallback(

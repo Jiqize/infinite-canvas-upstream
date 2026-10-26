@@ -7,6 +7,20 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- 平铺合并前修复：停止恰逢白底或透明底保存完成时先保存任务检查点，重试复用产物；2 个新增回归用例通过。文件夹节点重开恢复多图资源 URL，浏览器用过期 Blob URL 验证两张图片恢复后均可读且 storageKey 不变。平铺/拖放 17 项与腾讯 7 项测试通过；未执行全量构建或类型检查。
+
+- 文件夹节点拖入追加：支持多文件、递归目录和目录分批读取，保留已有内容；拖入高亮，节点处理后不向外层画布传播。3 项目录读取测试通过；浏览器用合成文件拖放事件验证列表从 2 增至 3、画布节点数保持 4，随后移除测试新增项。Finder 原生目录拖放仍待用户验证；未触发生图。
+
+- 平铺正背模式：图片页切换正面/背面，每面独立预设；任务按启动时的视图保存，结果标题、任务记录和来源状态区分正背。背面提示不复制胸前图案，正面素材推测背面需人工核对。已验证浏览器切换后预设和底部视图同步、已有正面记录不变；未新增付费背面生成，真实背面还原效果待验收。
+- 文件夹图片节点：节点管理中与批量平铺一起提供；一次选择文件夹包含子目录，忽略非图片，按相对路径自然排序，保存本地存储引用，重复选择同一未改动文件不追加副本；可添加其他文件夹或移除列表项。浏览器已导入两张含子目录的测试图片、跳过文本文件，通过一条连线与原有单图一起读取成三条独立输入；重载插件后仍能显示，重复选择保持两张。12 项平铺定向测试通过。大文件夹、损坏图片提示、刷新后预览与真实批量生成仍待验收。
+
+- 批量平铺布局：默认显示图片页，模型/尺寸/腾讯配置/预设移至设置页，任务历史在记录页；底部固定透明 PNG 开关、当前模型和生成操作。新节点默认 460×560，已有节点可手动缩放。已在现有单图试用节点检查深浅主题、三个页签、提示词展开滚动、底部可见与空白区域拖动；多图长列表及较窄节点仍待用户试用。本次仅调整界面，没有新增生成请求。
+
+- 批量平铺节点：构建本地 flatlay 插件并启用后，连接多张模特图或图片组；检查逐图手动目标、统一目标及留空识别，生成请求每次仅带对应的一张原图，提示词替换为该件服装，结果只有单件正面、居中、纯白背景。
+- 批量执行与恢复：逐张完成识别→白底→可选透明底，无自动重试；某项失败应继续下一项，已生成白底保留，去底重试不重复生图。检查平移画布让节点移出视口后仍继续处理，以及停止、刷新后的中断及手动继续；重新生成应新增结果，旧结果仍可使用。检查运行中重挂载不会重复提交。
+- 腾讯透明底：配置仅留在页面内存，可导入 MindFrame JSON；刷新需重新配置。用已开通数据万象且允许本站 CORS 的桶检查商品/通用抠图、真实 PNG alpha、白衣和镂空边缘、COS 临时对象清理及清理失败提示。已用现有斜领卫衣模特图完成一次真实 Sunburst 生图和 GoodsMatting 去底：单件白底与透明 PNG 均保存，透明像素 968121、半透明像素 4316、不透明像素 600427（1024×1536）；临时对象列表为空。首次因无 CORS 失败，用户授权 localhost:3000 专用规则后只重试去底成功，未重复生图。更多面料边缘仍待验收。
+- 平铺画布交互：检查白底/透明底普通图片节点的原始比例、来源连线、本地保存重开、选择结果后使用已有工具栏导出；浅色/深色主题、空白区域拖动与输入框操作均需浏览器验收。17 个定向行为测试已通过；已构建插件并在浏览器完成加载、上传、连线、指定目标、生成及去底重试。未运行类型检查，多图、刷新和导出仍待验收。
+
 - External image drop: dragging one image onto an existing image node should replace its picture within the same node, keep its node ID, connections, prompt, model, and image settings, and resize the picture to its natural aspect ratio within the original node footprint. Dropping onto empty canvas should still create a new node; with multiple files, only the first image should replace the target and the rest should create nodes nearby. The upload button should follow the same replacement behavior for existing image nodes.
 - Pose Reference plugin node: the default mannequin mode offers neutral standing, hand in pocket, walking, turning, and cross-legged floor sitting. Dragging the 3D mannequin should orbit the camera without moving the node; full, half, and close framing should change the rendered guide. Its separate action button should create and open an image generation node on the right, connect the pose as a reference visibly labeled “参考姿势”, and also connect the selected person image when available. The image node should allow choosing model, image settings, and an additional person reference before generation; clicking the pose action again after changing pose or camera should refresh the reference without resetting a manually edited prompt. Image-reference mode should follow the same flow, and its reference should remain usable after reloading the canvas. The prior direct-generation trials showed that a striped-top photo guide produced a hand-in-pocket pose without copying its blue bag; the final prop-free cross-legged preset produced a full-body three-quarter view of the blonde model, keeping her white T-shirt, black trousers, and heels without rendering the mannequin. The updated node flow and other subjects, rear views, and complex poses still need review.
 - Mannequin proportions: check head-to-body proportions and smooth shoulder, hip, arm, and leg connections in standing, walking, and cross-legged poses. The former spherical joints and abrupt cuts should be gone; hands and feet should retain their shape when orbiting from front to side. Only the local preview has been checked so far; the effect of the updated guide on generated images still needs review with production references.

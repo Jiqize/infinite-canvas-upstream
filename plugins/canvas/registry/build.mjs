@@ -15,6 +15,7 @@ const nodeModules = join(root, "node_modules");
 // 版本不在这里写死 —— 从各插件的 package.json 读取(单一真源),
 // 与插件 src 里 definePlugin({version}) 保持一致,避免清单与产物版本脱节。
 const OFFICIAL = [
+    { id: "flatlay", dir: "flatlay", name: "批量平铺节点", description: "文件夹批量输入，生成正面或背面平铺图与腾讯透明底", icon: "👕" },
     { id: "markdown", dir: "markdown", name: "Markdown 节点", description: "在画布中编辑与渲染 Markdown", icon: "📝" },
     { id: "svg", dir: "svg", name: "SVG 节点", description: "透明背景渲染 SVG,可接收上游文本节点的 SVG 源码", icon: "🔷" },
     { id: "html", dir: "html", name: "HTML 节点", description: "沙箱 iframe 渲染 HTML,支持 {{input}} 注入上游文本", icon: "🌐" },

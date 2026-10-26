@@ -152,6 +152,7 @@ export type GenerateOptions = {
 };
 
 export type GenerateImageOptions = GenerateOptions & {
+    background?: "opaque" | "transparent";
     count?: number; // 期望生成张数(宿主会按模型上限裁剪)
     size?: string; // 形如 "1024x1024" / "auto";缺省用宿主当前配置
 };
@@ -211,7 +212,19 @@ export type PluginStorage = {
     remove: (key: string) => Promise<void>;
 };
 
+// 图片处理能力由宿主提供，凭据不进入节点数据。
+export type PluginStoredImage = { url: string; storageKey: string; width: number; height: number; bytes: number; mimeType: string };
+export type CanvasPluginMedia = {
+    saveImage: (source: string, signal?: AbortSignal) => Promise<PluginStoredImage>;
+    resolveImage: (image: { storageKey?: string; url?: string }) => Promise<string>;
+    removeBackground: (source: string, mode: "goods" | "general", signal?: AbortSignal) => Promise<{ image: string; warning?: string }>;
+    configureCutout: () => void;
+    cutoutReady: () => boolean;
+    recordGeneration: (image: PluginStoredImage, details: { prompt: string; model: string; size?: string }) => Promise<void>;
+};
+
 export type CanvasNodeContext = {
+    media?: CanvasPluginMedia;
     // 自身数据
     node: CanvasNodeData;
     theme: CanvasTheme;
