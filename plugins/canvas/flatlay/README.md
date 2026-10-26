@@ -4,9 +4,10 @@
 
 ## 本地试用
 
-工作目录为 `/Users/lianglei/Projects/git/new-infinite-canvas.codex-worktrees/flatlay-canvas`。Web 依赖已安装；按照项目约定，本轮没有执行构建。下面命令供本地试用时执行：
+在仓库根目录执行以下命令（需要 Node.js 22 与 npm）：
 
 ```sh
+npm --prefix web install --legacy-peer-deps --ignore-scripts
 npm --prefix plugins/canvas/sdk install --ignore-scripts
 npm --prefix plugins/canvas/flatlay install --ignore-scripts
 npm --prefix plugins/canvas/flatlay run build
@@ -31,7 +32,7 @@ npm --prefix web run dev
 
 ## 验证边界
 
-17 个定向行为测试已通过，网络均为模拟；没有执行类型检查、构建或真实生成请求。待验收：本地插件加载、主题和拖动、运行时平移画布、保存重开/导出、腾讯 CORS/权限/清理、真实服装效果（尤其白衣、蕾丝与镂空边缘）。透明度检查只能发现不透明或全空图片，不能代替边缘质量验收。
+24 项定向测试通过（平铺与拖放 17 项、腾讯服务 7 项）。已完成浏览器单图白底生成、腾讯真实透明底和临时对象清理，以及文件夹导入、合成拖放、失效图片引用恢复。未执行全量构建或类型检查；背面质量、多图真实队列、自动识别、Finder 原生目录拖放仍待验收。透明度检查不能代替边缘质量验收。
 
 运行中节点保留挂载，平移画布不应中断批次；离开画布、删除节点或刷新会中断。重开后保留已保存结果，手动继续待处理项或重试失败项，不自动重复生图。
 
@@ -52,3 +53,16 @@ bun test ./src/services/api/tencent-cutout.test.ts
 本轮已完成目录导入与连线的浏览器检查、12 项平铺逻辑测试，没有追加背面或批量计费生成。
 
 文件夹图片节点也支持把本地多张图片或整个目录直接拖到节点内追加，包含子目录；已有列表保留，同一路径/大小/修改时间的重复项跳过。拖入时显示高亮提示。正在读取时请等当前导入完成，再继续添加。导入后在平铺节点点击「更新上游」。
+
+## Windows 构建与分发
+
+从 `https://github.com/Jiqize/infinite-canvas-upstream.git` 的 `main` 拉取。先执行上面的依赖安装与平铺插件构建，再执行：
+
+```sh
+npm --prefix web run build
+npm --prefix web run start
+```
+
+`web/dist` 是静态网页产物，不是 Windows 安装包；分发时需完整保留 `plugins/flatlay.js` 和 `plugins/index.json`，通过 HTTP 服务打开，不能直接双击 HTML。默认预览地址为 `http://localhost:3000`，在「节点管理」启用本地批量平铺插件。这里提供构建步骤，尚未在 Windows 实机验证。
+
+画布、图片和模型配置保存在原浏览器本地，不随 Git 同步；需要迁移时使用应用已有的导出/导入。腾讯凭据不会打进产物，须在使用端配置；目前获批的桶 CORS 来源为 `http://localhost:3000`，更换域名或端口需配置相应来源。
